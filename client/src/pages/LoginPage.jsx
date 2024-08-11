@@ -1,19 +1,28 @@
 import axios from "axios";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserContext } from "../UserContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+  const { setUser } = useContext(UserContext);
 
   async function login(e) {
     e.preventDefault();
     try {
       const response = await axios.post("/login", { email, password });
 
+      // login successful
       if (response.status === 201) {
         alert("Login successful.");
+
+        setUser(response.data);
+        navigate("/"); // navigate to homepage
       }
+
+      // errors associated with server not responding or incorrect credentials
     } catch (error) {
       if (error.response) {
         alert(error.response.data.message);
@@ -22,7 +31,6 @@ export default function LoginPage() {
       }
     }
   }
-
   return (
     <div className="mt-4 grow flex items-center justify-around">
       <div className="mb-32">

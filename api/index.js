@@ -6,12 +6,14 @@ const User = require("./models/Users");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const app = express(); // create an instance of express app to do apis and middleware
+const cookieParser = require("cookie-parser");
 
 const bcryptSalt = bcrypt.genSaltSync(10);
 const jwtSecret = "ajfhjsdfhasjdkh";
 
 // middleware
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
 
 // set up database connection
@@ -58,7 +60,11 @@ app.post("/login", async (req, res) => {
       if (passwordVerified) {
         // send a cookie
         jwt.sign(
-          { email: existingUser.email, id: existingUser._id },
+          {
+            name: existingUser.name,
+            email: existingUser.email,
+            id: existingUser._id,
+          },
           jwtSecret,
           {},
           (err, token) => {
@@ -68,7 +74,10 @@ app.post("/login", async (req, res) => {
                 .status(500)
                 .json({ message: "Login failed. Please try again." });
             }
-            res.cookie("token", token, { httpOnly: true }).json("finish");
+            res
+              .status(201)
+              .cookie("token", token, { httpOnly: true })
+              .json(existingUser);
           }
         );
       } else {
@@ -83,6 +92,21 @@ app.post("/login", async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: "Login failed. Please try again." });
+  }
+});
+
+// this endpoint will check if there is login information by checking the website's cookie
+app.get("/profile", async (req, res) => {
+  const { token } = req.cookies;
+  // if the token within the cookie exists, verify it and return the decrypted information (email and id)
+  if (token) {
+    jwt.verify(token, jwtSecret, {}, async (err, cookieData) => {
+      if (err) throw err;
+      const { name, email, _id } = await User.findById(cookieData.id);
+      res.json({ name, email, _id });
+    });
+  } else {
+    res.json(null);
   }
 });
 
